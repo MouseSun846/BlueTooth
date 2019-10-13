@@ -3,7 +3,9 @@ package com.example.bluetooth.BlueToothManage.BluetoothChat;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -50,9 +52,11 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	private Button mMinusButton;
 	private Button mStart;
 	private Button mEnd;
+	private Button mSetting;
 	private RadioGroup radioGroup;
+	private TextView mtvValue;
 	private int stepValues;
-	private int valueDegree=500;
+	private int valueDegree=0;
 
 	// 连接设备的名称
 	private String mConnectedDeviceName = null;
@@ -75,6 +79,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		btn_discover = (Button) findViewById(R.id.btn_discover);
 		btn_connect.setOnClickListener(this);
 		btn_discover.setOnClickListener(this);
+		mtvValue=findViewById(R.id.tv_value);
 		// 获取本地蓝牙适配器
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		// 判断蓝牙是否可用
@@ -94,9 +99,9 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mSlide.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 			@Override
 			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-				valueDegree = progress+1374;
-				Log.i("mouse","valueDegree"+valueDegree);
+				valueDegree = progress;
 				sendMessage(valueDegree);
+				mtvValue.setText(""+progress);
 			}
 
 			@Override
@@ -113,13 +118,32 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mStart.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				sendMessage(1374);
+				mtvValue.setText("1");
+				sendMessage(500);
+				sendMessage(1);
+				mSlide.setProgress(1);
+				valueDegree=1;
 			}
 		});
 		mEnd.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				sendMessage(2500);
+				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+				valueDegree=sp.getInt("setvalue",0);
+				mSlide.setProgress(valueDegree);
+				mtvValue.setText(""+valueDegree);
+				sendMessage(valueDegree);
+			}
+		});
+		mSetting = findViewById(R.id.button_set);
+		mSetting.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				//默认的操作 方式
+				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+				SharedPreferences.Editor editor = sp.edit();
+				editor.putInt("setvalue",valueDegree);
+				editor.commit();
 			}
 		});
 	}
@@ -167,22 +191,23 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 						valueDegree=2500;
 					}
 				}
-				mSlide.setProgress(valueDegree-500);
+				mSlide.setProgress(valueDegree);
+				mtvValue.setText(""+valueDegree);
 				sendMessage(valueDegree);
 			}
 		});
 		mMinusButton.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				if (valueDegree<500){
-					valueDegree=500;
+				if (valueDegree<1){
+					valueDegree=1;
 				}else {
 					valueDegree-=stepValues;
-					if (valueDegree<500){
-						valueDegree=500;
+					if (valueDegree<1){
+						valueDegree=1;
 					}
 				}
-				mSlide.setProgress(valueDegree-500);
+				mSlide.setProgress(valueDegree);
 				sendMessage(valueDegree);
 			}
 		});
