@@ -128,6 +128,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mEnd.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
+				//操作读方式
 				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
 				valueDegree=sp.getInt("setvalue",0);
 				mSlide.setProgress(valueDegree);
@@ -139,7 +140,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mSetting.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				//默认的操作 方式
+				//操作写方式
 				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
 				SharedPreferences.Editor editor = sp.edit();
 				editor.putInt("setvalue",valueDegree);
