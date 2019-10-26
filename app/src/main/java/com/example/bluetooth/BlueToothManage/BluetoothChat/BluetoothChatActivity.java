@@ -54,6 +54,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	private Button mEnd;
 	private Button mSetting;
 	private RadioGroup radioGroup;
+	private RadioGroup componentGroup;
 	private TextView mtvValue;
 	private int stepValues;
 	private int valueDegree=0;
@@ -66,12 +67,14 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	// 成员对象聊天服务
 	private BluetoothChatService mChatService = null;
 	private Button btn_connect, btn_discover;
+	private Boolean auto_manual = true; //判断是按键动还是slide
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		radioGroup = findViewById(R.id.stepValue);
+		componentGroup = findViewById(R.id.choose_gear);
 		mTitle = (TextView) findViewById(R.id.title_left_text);
 		mTitle.setText(R.string.app_name);
 		mTitle = (TextView) findViewById(R.id.title_right_text);
@@ -95,13 +98,36 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 				stepValues = Integer.parseInt((String) radioButton.getText());
 			}
 		});
+
 		mSlide = findViewById(R.id.slideValue);
 		mSlide.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 			@Override
 			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-				valueDegree = progress;
-				sendMessage(valueDegree);
-				mtvValue.setText(""+progress);
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机
+					valueDegree = progress;
+					if (auto_manual == false){
+						auto_manual = true;
+					}else {
+						sendMessage(valueDegree);
+					}
+					mtvValue.setText(""+progress);
+				}else if (id == R.id.control_grip){
+					//夹爪
+					valueDegree = progress-347;
+					if (valueDegree>=1170){
+						if (auto_manual == false){
+							auto_manual = true;
+						}else {
+							sendMessage(valueDegree);
+						}
+					}else {
+						valueDegree = 1170;
+					}
+					mtvValue.setText(""+valueDegree);
+				}
+
 			}
 
 			@Override
@@ -118,33 +144,68 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mStart.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				mtvValue.setText("1");
-				sendMessage(500);
-				sendMessage(1);
-				mSlide.setProgress(1);
-				valueDegree=1;
+				auto_manual = false;
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机
+					mtvValue.setText("1");
+
+					mSlide.setProgress(1);
+					sendMessage(500);
+					sendMessage(1);
+					valueDegree=1;
+				}else if (id == R.id.control_grip){
+					//夹爪
+					mtvValue.setText("1170");
+					mSlide.setProgress(1170+347);
+					sendMessage(1170);
+					valueDegree=1170;
+				}
+
 			}
 		});
 		mEnd.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				//操作读方式
-				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
-				valueDegree=sp.getInt("setvalue",0);
-				mSlide.setProgress(valueDegree);
-				mtvValue.setText(""+valueDegree);
-				sendMessage(valueDegree);
+				auto_manual = false;
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机操作读方式
+					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+					valueDegree=sp.getInt("setvalue",0);
+					mSlide.setProgress(valueDegree);
+					sendMessage(valueDegree);
+					mtvValue.setText(""+valueDegree);
+				}else if (id == R.id.control_grip){
+					//抓手操作读方式
+					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+					int gripval=sp.getInt("setgripvalue",0);
+					mSlide.setProgress(gripval+347);
+					sendMessage(gripval);
+					mtvValue.setText(""+gripval);
+				}
+
 			}
 		});
 		mSetting = findViewById(R.id.button_set);
 		mSetting.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				//操作写方式
-				SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
-				SharedPreferences.Editor editor = sp.edit();
-				editor.putInt("setvalue",valueDegree);
-				editor.commit();
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机操作写方式
+					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+					SharedPreferences.Editor editor = sp.edit();
+					editor.putInt("setvalue",valueDegree);
+					editor.commit();
+				}else if (id == R.id.control_grip){
+					//相机操作写方式
+					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
+					SharedPreferences.Editor editor = sp.edit();
+					editor.putInt("setgripvalue",valueDegree);
+					editor.commit();
+				}
+
 			}
 		});
 	}
@@ -184,14 +245,29 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mMinusButton = (Button) findViewById(R.id.button_clear);
 		mPlusButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				if (valueDegree>2500){
-					valueDegree = 2500;
-				}else {
-					valueDegree+=stepValues;
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机
 					if (valueDegree>2500){
-						valueDegree=2500;
+						valueDegree = 2500;
+					}else {
+						valueDegree+=stepValues;
+						if (valueDegree>2500){
+							valueDegree=2500;
+						}
+					}
+				}else if (id == R.id.control_grip){
+					//夹爪
+					if (valueDegree  > 1653){
+						valueDegree = 1653;
+					}else {
+						valueDegree+=stepValues;
+						if (valueDegree > 1653){
+							valueDegree = 1653;
+						}
 					}
 				}
+
 				mSlide.setProgress(valueDegree);
 				mtvValue.setText(""+valueDegree);
 				sendMessage(valueDegree);
@@ -200,14 +276,29 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 		mMinusButton.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				if (valueDegree<1){
-					valueDegree=1;
-				}else {
-					valueDegree-=stepValues;
+				int id = componentGroup.getCheckedRadioButtonId();
+				if (id == R.id.control_camera){
+					//相机
 					if (valueDegree<1){
 						valueDegree=1;
+					}else {
+						valueDegree-=stepValues;
+						if (valueDegree<1){
+							valueDegree=1;
+						}
+					}
+				}else if (id == R.id.control_grip){
+					//夹爪
+					if (valueDegree<1170){
+						valueDegree=1170;
+					}else {
+						valueDegree-=stepValues;
+						if (valueDegree<1170){
+							valueDegree=1170;
+						}
 					}
 				}
+
 				mSlide.setProgress(valueDegree);
 				sendMessage(valueDegree);
 			}
@@ -263,13 +354,21 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	 */
 	private void sendMessage(int value) {
 		if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-			Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT)
-					.show();
+			Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
 			return;
 		}
 		String str;
-		str="55 55 08 03 01 e8 03 01"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
-		mChatService.write(stringToBytes(getHexString(str)));
+		int id = componentGroup.getCheckedRadioButtonId();
+		if (id == R.id.control_camera){
+			//发送相机数据
+			str="55 55 08 03 01 e8 03 01"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
+			mChatService.write(stringToBytes(getHexString(str)));
+		}else if (id == R.id.control_grip){
+			//发送夹爪数据
+			str="55 55 08 03 04 e8 03 04"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
+			mChatService.write(stringToBytes(getHexString(str)));
+		}
+
 
 	}
 
