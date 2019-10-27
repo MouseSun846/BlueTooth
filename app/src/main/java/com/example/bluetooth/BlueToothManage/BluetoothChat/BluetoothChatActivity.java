@@ -15,14 +15,18 @@ import android.view.View.OnClickListener;
 import android.view.Window;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.bluetooth.BlueToothManage.BluetoothChat.NetData.MqttSubscibe;
+import com.example.bluetooth.BlueToothManage.BluetoothChat.NetData.RosInfo;
 import com.example.bluetooth.R;
 
 /**
@@ -68,6 +72,9 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	private BluetoothChatService mChatService = null;
 	private Button btn_connect, btn_discover;
 	private Boolean auto_manual = true; //判断是按键动还是slide
+	private Boolean abTest = true; //数据下发开关
+	private Switch mSwitchMode;
+	private MqttSubscibe mqttSubscibe;	//mqtt处理ROS信息回调
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -110,7 +117,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 					if (auto_manual == false){
 						auto_manual = true;
 					}else {
-						sendMessage(valueDegree);
+						sendMessage(""+valueDegree);
 					}
 					mtvValue.setText(""+progress);
 				}else if (id == R.id.control_grip){
@@ -120,7 +127,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 						if (auto_manual == false){
 							auto_manual = true;
 						}else {
-							sendMessage(valueDegree);
+							sendMessage(""+valueDegree);
 						}
 					}else {
 						valueDegree = 1170;
@@ -151,14 +158,14 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 					mtvValue.setText("1");
 
 					mSlide.setProgress(1);
-					sendMessage(500);
-					sendMessage(1);
+					sendMessage(""+500);
+					sendMessage(""+1);
 					valueDegree=1;
 				}else if (id == R.id.control_grip){
 					//夹爪
 					mtvValue.setText("1170");
 					mSlide.setProgress(1170+347);
-					sendMessage(1170);
+					sendMessage(""+1170);
 					valueDegree=1170;
 				}
 
@@ -174,14 +181,14 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
 					valueDegree=sp.getInt("setvalue",0);
 					mSlide.setProgress(valueDegree);
-					sendMessage(valueDegree);
+					sendMessage(""+valueDegree);
 					mtvValue.setText(""+valueDegree);
 				}else if (id == R.id.control_grip){
 					//抓手操作读方式
 					SharedPreferences sp = getApplicationContext().getSharedPreferences("setting", Context.MODE_PRIVATE);
 					int gripval=sp.getInt("setgripvalue",0);
 					mSlide.setProgress(gripval+347);
-					sendMessage(gripval);
+					sendMessage(""+gripval);
 					mtvValue.setText(""+gripval);
 				}
 
@@ -208,6 +215,32 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 
 			}
 		});
+		mSwitchMode = findViewById(R.id.modeChange);
+		mSwitchMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				//切换模式
+				if (isChecked){
+					mSwitchMode.setText("网络模式");
+					abTest = false; //关闭手动数据下发开关
+				}else {
+					abTest = true;	//打开手动数据下发开关
+					mSwitchMode.setText("手动模式");
+				}
+			}
+		});
+
+		//初始化 MQTT
+		mqttSubscibe = new MqttSubscibe(BluetoothChatActivity.this);
+		mqttSubscibe.InitMqttInfo();
+		//处理信息回调
+		mqttSubscibe.rosInfo = new RosInfo() {
+			@Override
+			public void getMessage(String str) {
+				sendMessage(str);
+			}
+		};
+
 	}
 
 	@Override
@@ -270,7 +303,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 
 				mSlide.setProgress(valueDegree);
 				mtvValue.setText(""+valueDegree);
-				sendMessage(valueDegree);
+				sendMessage(""+valueDegree);
 			}
 		});
 		mMinusButton.setOnClickListener(new OnClickListener() {
@@ -300,7 +333,7 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 				}
 
 				mSlide.setProgress(valueDegree);
-				sendMessage(valueDegree);
+				sendMessage(""+valueDegree);
 			}
 		});
 		// 初始化BluetoothChatService进行蓝牙连接
@@ -352,22 +385,33 @@ public class BluetoothChatActivity extends Activity implements OnClickListener {
 	 *
 	 *            发送的内容
 	 */
-	private void sendMessage(int value) {
+	private void sendMessage(String result) {
+
 		if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
 			Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
 			return;
 		}
-		String str;
-		int id = componentGroup.getCheckedRadioButtonId();
-		if (id == R.id.control_camera){
-			//发送相机数据
-			str="55 55 08 03 01 e8 03 01"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
-			mChatService.write(stringToBytes(getHexString(str)));
-		}else if (id == R.id.control_grip){
-			//发送夹爪数据
-			str="55 55 08 03 04 e8 03 04"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
-			mChatService.write(stringToBytes(getHexString(str)));
+		//手动模式下发数据
+		if (abTest){
+			String str;
+			int value = Integer.parseInt(result);
+			int id = componentGroup.getCheckedRadioButtonId();
+			if (id == R.id.control_camera){
+				//发送相机数据
+				str="55 55 08 03 01 e8 03 01"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
+				mChatService.write(stringToBytes(getHexString(str)));
+			}else if (id == R.id.control_grip){
+				//发送夹爪数据
+				str="55 55 08 03 04 e8 03 04"+" "+String.format("%02x",value%256)+" "+String.format("%02x",value/256);
+				mChatService.write(stringToBytes(getHexString(str)));
+			}
+		}else {
+			//网络模式下达数据
+//			Log.i("mouse","result = "+result);
+			mChatService.write(stringToBytes(getHexString(result)));
+
 		}
+
 
 
 	}

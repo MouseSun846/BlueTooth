@@ -62,6 +62,20 @@
             android:text="@string/discoverable" />
     </LinearLayout>
     <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/name_devices">
+        <Switch
+            android:id="@+id/modeChange"
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:textSize="20sp"
+            android:text="手动模式"
+            android:background="#EBBB96"/>
+    </LinearLayout>
+    <LinearLayout
         android:id="@+id/name_control"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
